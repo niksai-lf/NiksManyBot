@@ -17,8 +17,9 @@ ADMIN_PAYOUTS_CHANNEL = -1004391177606
 ADMIN_REVIEWS_CHANNEL = -1004414700976
 STATS_CHANNEL = -1004372612966  # КАНАЛ СТАТИСТИКИ
 
-# ВСТАВЬ СВОЙ ПАРОЛЬ ВМЕСТО ТВОЙ_ПАРОЛЬ НИЖЕ:
+# ВСТАВЬ СВОЙ ПАРОЛЬ ВМЕСТО ТВОЙ_ПАРОЛЬ НИЖЕ (НЕ УДАЛЯЙ ДВОЕТОЧИЕ И @):
 DB_URL = "postgresql://postgres.nwrdtisxywhsmwuxezid:niksai#CLOUD11@aws-1-eu-central-1.pooler.supabase.com:6543/postgres"
+
 MANDATORY_CHANNEL = "@NiksMany"
 TECH_SUPPORT = "@dskup"
 MIN_WITHDRAW = 0.11
@@ -87,30 +88,61 @@ async def log_to_stats(text: str):
     except Exception as e:
         logging.error(f"Error sending to stats channel: {e}")
 
+# --- СЛОВАРЬ ПЕРЕВОДОВ НА 6 ЯЗЫКОВ ---
 LANGS = {
     'ru': {
-        'btn_profile': "👤 Мой профиль", 'btn_tasks': "🎯 Задания", 'btn_withdraw': "💸 Вывод средств", 'btn_ref': "🤝 Партнерам", 'btn_rules': "📜 Правила", 'btn_info': "ℹ️ О нас", 'btn_lang': "🌍 Язык", 'btn_admin': "⚙️ Админ-панель",
-        'btn_details': "📄 Подробней",
+        'btn_profile': "👤 Мой профиль", 'btn_tasks': "🎯 Задания", 'btn_withdraw': "💸 Вывод средств", 'btn_ref': "🤝 Партнерам", 'btn_rules': "📜 Правила", 'btn_info': "ℹ️ О нас", 'btn_lang': "🌍 Язык", 'btn_admin': "⚙️ Админ-панель", 'btn_details': "📄 Подробней",
         'welcome': "<blockquote>🌴 <b>Добро пожаловать в NiksMany!</b></blockquote>\n<i>Выберите действие в меню ниже 👇</i>",
         'sub_task': "<blockquote>🚨 <b>Доступ ограничен!</b></blockquote>\n<i>Для использования бота подпишитесь на наш официальный канал.</i>\n\n🎁 За подписку вы сразу получите <code>0.01 USDT</code>.",
-        'check_sub': "✅ Проверить", 'sub_err': "❌ Вы не подписались! Подпишитесь, чтобы начать зарабатывать.", 'sub_ok': "🎉 Отлично! Вам начислено бонусное вознаграждение.",
-        'unsub_pen': "<blockquote>⚠️ <b>Штраф!</b></blockquote>\n<i>Вы отписались от канала-спонсора.</i>\nС баланса списано 0.01 USDT. Подпишитесь снова!",
+        'check_sub': "✅ Проверить", 'sub_err': "❌ Вы не подписались! Подпишитесь, чтобы начать зарабатывать.", 'sub_ok': "🎉 Отлично! Вам начислено бонусное вознаграждение.", 'unsub_pen': "<blockquote>⚠️ <b>Штраф!</b></blockquote>\n<i>Вы отписались от канала-спонсора.</i>\nС баланса списано 0.01 USDT. Подпишитесь снова!",
         'profile': "<blockquote>🪪 <b>КАБИНЕТ ПОЛЬЗОВАТЕЛЯ</b></blockquote>\n━━━━━━━━━━━━━━━━━━\n👤 <i>Пользователь:</i> @{username}\n🆔 <i>Ваш ID:</i> <code>{id}</code>\n\n📊 <i>Статус:</i> <b>{status}</b>\n🎯 <i>Выполнено заданий:</i> <b>{tasks}</b>\n\n💎 <b>Баланс:</b> <code>{balance} USDT</code>\n━━━━━━━━━━━━━━━━━━",
         'rules': "<blockquote>📜 <b>ПРАВИЛА И ИНФОРМАЦИЯ:</b></blockquote>\n\n1️⃣ <b>Минимальный вывод:</b> 0.33 USDT.\n2️⃣ <b>Штрафы:</b> Бот строго следит за вашими подписками. Если вы отпишетесь от спонсора, бот автоматически спишет награду с баланса!\n3️⃣ <b>Рейтинговая система:</b> Ваш ранг зависит от количества выполненных заданий:\n  🥉 Бронза: 1 задание\n  🥈 Сильвер: 2-3 задания\n  🥇 Золото: 4-6 заданий\n  💠 Платина: 7+ заданий\n4️⃣ <b>Рефералы:</b> Приглашайте друзей! Как только ваш друг выполнит 2 задания и достигнет ранга Сильвер, вы получите 0.03 USDT.",
-        'info': "<blockquote>🏢 <b>О КОМПАНИИ И НАШЕМ ТРАФИКЕ:</b></blockquote>\n\nБот <b>NiksMany</b> разработан передовой IT-студией <i>NM Global Technologies</i>. Мы являемся лидерами по привлечению целевой аудитории.\n\n🌐 <b>Источники нашего трафика:</b>\n• Telegram\n• Instagram\n• TikTok\n• YouTube\n\n🎯 <b>Основные тематики и ниши аудитории:</b>\n🔹 Криптовалюта и NFT-проекты\n🔹 Игровая индустрия\n🔹 Telegram Stars\n🔹 Спортивные направления\n🔹 Гемблинг и беттинг (лудо-аудитория)\n🔹 Схемы для легкого заработка в сети\n🔹 Разработка скриптов и ботов\n\n🤝 <b>Сотрудничество:</b>\nЕсли вы хотите заказать качественный трафик, добавить свой канал в бота или задать вопрос, обращайтесь в нашу поддержку!",
-        'tech_sup_btn': "👨‍💻 Тех. Поддержка",
-        'all_tasks': "<blockquote>📋 <b>Доступные задания:</b></blockquote>\n<i>Выберите задание для выполнения:</i>",
+        'info': "<blockquote>🏢 <b>О КОМПАНИИ И НАШЕМ ТРАФИКЕ:</b></blockquote>\n\nБот <b>NiksMany</b> разработан передовой IT-студией <i>NM Global Technologies</i>. Мы являемся лидерами по привлечению целевой аудитории.\n\n🌐 <b>Источники нашего трафика:</b>\n• Telegram\n• Instagram\n• TikTok\n• YouTube\n\n🤝 <b>Сотрудничество:</b>\nЕсли вы хотите заказать качественный трафик, добавить свой канал в бота или задать вопрос, обращайтесь в нашу поддержку!",
+        'tech_sup_btn': "👨‍💻 Тех. Поддержка", 'all_tasks': "<blockquote>📋 <b>Доступные задания:</b></blockquote>\n<i>Выберите задание для выполнения:</i>",
         'withdraw_menu': "<blockquote>💸 <b>УПРАВЛЕНИЕ БАЛАНСОМ</b></blockquote>\n\n💎 <i>Доступно для вывода:</i> <code>{bal} USDT</code>\n\nВыберите способ вывода:",
-        'with_max_btn': "💰 Вывести всё (MAX)", 'with_man_btn': "✍️ Ввести сумму вручную",
-        'withdraw_req': "<blockquote>💰 <i>Введите сумму для вывода вручную (Мин. 0.33 USDT):</i></blockquote>\nИли выберите действие в меню для отмены.", 'with_err_num': "❌ Введите корректное число!", 'with_err_min': "❌ Минимальная сумма вывода 0.33 USDT", 'with_err_bal': "❌ Недостаточно средств на балансе!", 'with_ok': "✅ Заявка создана! Ожидайте чек.",
+        'with_max_btn': "💰 Вывести всё (MAX)", 'with_man_btn': "✍️ Ввести сумму вручную", 'withdraw_req': "<blockquote>💰 <i>Введите сумму для вывода вручную (Мин. 0.33 USDT):</i></blockquote>\nИли выберите действие в меню для отмены.", 'with_err_num': "❌ Введите корректное число!", 'with_err_min': "❌ Минимальная сумма вывода 0.33 USDT", 'with_err_bal': "❌ Недостаточно средств на балансе!", 'with_ok': "✅ Заявка создана! Ожидайте чек.",
         'ref_text': "<blockquote>🤝 <b>ПАРТНЕРСКАЯ ПРОГРАММА</b></blockquote>\n\n<i>Приглашайте друзей и получайте бонус!</i>\nЗа каждого друга, достигшего ранга 🥈 Сильвер (2 задания), вы получаете <b>0.03 USDT</b>.\n\n🔗 <b>Ваша ссылка:</b>\n<code>{link}</code>\n\n👥 <i>Приглашено:</i> <b>{count} чел.</b>",
-        'rev_ask': "🎁 Ваш чек на выплату: {link}\n\n<i>Хотите оставить отзыв о нашей работе? Ваш отзыв будет опубликован в официальном канале!</i>", 'rev_yes': "✅ Да, хочу", 'rev_no': "❌ Нет", 'rev_write': "✍️ Напишите ваш отзыв одним сообщением (можно прикрепить фото/скриншот):", 'rev_thanks': "✅ Спасибо! Ваш отзыв направлен на публикацию."
+        'rev_ask': "🎁 Ваш чек на выплату: {link}\n\n<i>Хотите оставить отзыв о нашей работе? Ваш отзыв будет опубликован в официальном канале!</i>", 'rev_yes': "✅ Да, хочу", 'rev_no': "❌ Нет", 'rev_write': "✍️ Напишите ваш отзыв одним сообщением:", 'rev_thanks': "✅ Спасибо! Ваш отзыв направлен на публикацию."
     },
     'en': {
-        'btn_profile': "👤 My Profile", 'btn_tasks': "🎯 Tasks", 'btn_withdraw': "💸 Withdraw", 'btn_ref': "🤝 Referrals", 'btn_rules': "📜 Rules", 'btn_info': "ℹ️ About Us", 'btn_lang': "🌍 Language", 'btn_admin': "⚙️ Admin-panel",
-        'btn_details': "📄 Details", 'welcome': "<blockquote>🌴 <b>Welcome to NiksMany!</b></blockquote>", 'sub_task': "<blockquote>🚨 <b>Access restricted!</b></blockquote>", 'check_sub': "✅ Verify", 'sub_err': "❌ Not subscribed!", 'sub_ok': "🎉 Reward credited.", 'unsub_pen': "<blockquote>⚠️ <b>Penalty!</b></blockquote>",
-        'profile': "<blockquote>🪪 <b>USER PROFILE</b></blockquote>", 'rules': "<blockquote>📜 <b>RULES:</b></blockquote>", 'info': "<blockquote>🏢 <b>ABOUT US</b></blockquote>", 'tech_sup_btn': "👨‍💻 Support", 'all_tasks': "<blockquote>📋 <b>Available Tasks:</b></blockquote>", 'withdraw_menu': "<blockquote>💸 <b>WITHDRAW</b></blockquote>", 'with_max_btn': "💰 Max Withdraw", 'with_man_btn': "✍️ Manual Amount",
-        'withdraw_req': "<blockquote>💰 <i>Enter amount:</i></blockquote>", 'with_err_num': "❌ Invalid number!", 'with_err_min': "❌ Minimum is 0.33 USDT", 'with_err_bal': "❌ Insufficient funds!", 'with_ok': "✅ Request created!", 'ref_text': "<blockquote>🤝 <b>REFERRAL PROGRAM</b></blockquote>", 'rev_ask': "🎁 Receipt: {link}", 'rev_yes': "✅ Yes", 'rev_no': "❌ No", 'rev_write': "✍️ Write review:", 'rev_thanks': "✅ Sent!"
+        'btn_profile': "👤 My Profile", 'btn_tasks': "🎯 Tasks", 'btn_withdraw': "💸 Withdraw", 'btn_ref': "🤝 Referrals", 'btn_rules': "📜 Rules", 'btn_info': "ℹ️ About Us", 'btn_lang': "🌍 Language", 'btn_admin': "⚙️ Admin-panel", 'btn_details': "📄 Details",
+        'welcome': "<blockquote>🌴 <b>Welcome to NiksMany!</b></blockquote>\n<i>Choose an action below 👇</i>", 'sub_task': "<blockquote>🚨 <b>Access restricted!</b></blockquote>\n<i>Subscribe to our channel to use the bot.</i>\n\n🎁 Bonus: <code>0.01 USDT</code>.", 'check_sub': "✅ Verify", 'sub_err': "❌ Not subscribed!", 'sub_ok': "🎉 Reward credited.", 'unsub_pen': "<blockquote>⚠️ <b>Penalty!</b></blockquote>\n<i>0.01 USDT deducted.</i>",
+        'profile': "<blockquote>🪪 <b>USER PROFILE</b></blockquote>\n━━━━━━━━━━━━━━━━━━\n👤 <i>User:</i> @{username}\n🆔 <i>ID:</i> <code>{id}</code>\n\n📊 <i>Status:</i> <b>{status}</b>\n🎯 <i>Tasks completed:</i> <b>{tasks}</b>\n\n💎 <b>Balance:</b> <code>{balance} USDT</code>\n━━━━━━━━━━━━━━━━━━",
+        'rules': "<blockquote>📜 <b>RULES:</b></blockquote>\n1️⃣ Min withdraw: 0.33 USDT.\n2️⃣ Penalties for unsubscribing!\n3️⃣ Ranks: Bronze, Silver, Gold, Platinum.\n4️⃣ Referrals: 0.03 USDT per active friend.", 'info': "<blockquote>🏢 <b>ABOUT US:</b></blockquote>\nBot developed by NM Global Technologies.", 'tech_sup_btn': "👨‍💻 Support", 'all_tasks': "<blockquote>📋 <b>Available Tasks:</b></blockquote>",
+        'withdraw_menu': "<blockquote>💸 <b>WITHDRAW</b></blockquote>\n💎 <i>Available:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Max Withdraw", 'with_man_btn': "✍️ Manual Amount", 'withdraw_req': "<blockquote>💰 <i>Enter amount:</i></blockquote>", 'with_err_num': "❌ Invalid number!", 'with_err_min': "❌ Minimum is 0.33 USDT", 'with_err_bal': "❌ Insufficient funds!", 'with_ok': "✅ Request created!",
+        'ref_text': "<blockquote>🤝 <b>REFERRAL PROGRAM</b></blockquote>\n🔗 <b>Your link:</b>\n<code>{link}</code>\n\n👥 <i>Invited:</i> <b>{count}</b>", 'rev_ask': "🎁 Receipt: {link}\n<i>Leave a review?</i>", 'rev_yes': "✅ Yes", 'rev_no': "❌ No", 'rev_write': "✍️ Write review:", 'rev_thanks': "✅ Sent!"
+    },
+    'de': {
+        'btn_profile': "👤 Mein Profil", 'btn_tasks': "🎯 Aufgaben", 'btn_withdraw': "💸 Auszahlung", 'btn_ref': "🤝 Partner", 'btn_rules': "📜 Regeln", 'btn_info': "ℹ️ Über uns", 'btn_lang': "🌍 Sprache", 'btn_admin': "⚙️ Admin-Panel", 'btn_details': "📄 Details",
+        'welcome': "<blockquote>🌴 <b>Willkommen bei NiksMany!</b></blockquote>\n<i>Wählen Sie unten eine Aktion 👇</i>", 'sub_task': "<blockquote>🚨 <b>Zugang beschränkt!</b></blockquote>\n<i>Abonnieren Sie unseren Kanal.</i>\n\n🎁 Bonus: <code>0.01 USDT</code>.", 'check_sub': "✅ Prüfen", 'sub_err': "❌ Nicht abonniert!", 'sub_ok': "🎉 Bonus gutgeschrieben.", 'unsub_pen': "<blockquote>⚠️ <b>Strafe!</b></blockquote>\n<i>0.01 USDT abgezogen.</i>",
+        'profile': "<blockquote>🪪 <b>BENUTZERPROFIL</b></blockquote>\n━━━━━━━━━━━━━━━━━━\n👤 <i>Benutzer:</i> @{username}\n🆔 <i>Ihre ID:</i> <code>{id}</code>\n\n📊 <i>Status:</i> <b>{status}</b>\n🎯 <i>Aufgaben erledigt:</i> <b>{tasks}</b>\n\n💎 <b>Guthaben:</b> <code>{balance} USDT</code>\n━━━━━━━━━━━━━━━━━━",
+        'rules': "<blockquote>📜 <b>REGELN:</b></blockquote>\n1️⃣ Min. Auszahlung: 0.33 USDT.\n2️⃣ Strafen für Entabonnieren!\n3️⃣ Ränge: Bronze, Silber, Gold, Platin.\n4️⃣ Referrals: 0.03 USDT für aktive Freunde.", 'info': "<blockquote>🏢 <b>ÜBER UNS:</b></blockquote>\nWir sind NM Global Technologies.", 'tech_sup_btn': "👨‍💻 Support", 'all_tasks': "<blockquote>📋 <b>Verfügbare Aufgaben:</b></blockquote>",
+        'withdraw_menu': "<blockquote>💸 <b>AUSZAHLUNG</b></blockquote>\n💎 <i>Verfügbar:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Alles auszahlen (MAX)", 'with_man_btn': "✍️ Betrag manuell eingeben", 'withdraw_req': "<blockquote>💰 <i>Betrag eingeben (Min. 0.33 USDT):</i></blockquote>", 'with_err_num': "❌ Ungültige Zahl!", 'with_err_min': "❌ Minimum ist 0.33 USDT", 'with_err_bal': "❌ Unzureichendes Guthaben!", 'with_ok': "✅ Anfrage erstellt!",
+        'ref_text': "<blockquote>🤝 <b>PARTNERPROGRAMM</b></blockquote>\n🔗 <b>Ihr Link:</b>\n<code>{link}</code>\n\n👥 <i>Eingeladen:</i> <b>{count}</b>", 'rev_ask': "🎁 Ihr Beleg: {link}\n<i>Möchten Sie eine Bewertung hinterlassen?</i>", 'rev_yes': "✅ Ja", 'rev_no': "❌ Nein", 'rev_write': "✍️ Schreiben Sie Ihre Bewertung:", 'rev_thanks': "✅ Danke! Gesendet."
+    },
+    'pl': {
+        'btn_profile': "👤 Mój profil", 'btn_tasks': "🎯 Zadania", 'btn_withdraw': "💸 Wypłata", 'btn_ref': "🤝 Partnerzy", 'btn_rules': "📜 Zasady", 'btn_info': "ℹ️ O nas", 'btn_lang': "🌍 Język", 'btn_admin': "⚙️ Panel admina", 'btn_details': "📄 Szczegóły",
+        'welcome': "<blockquote>🌴 <b>Witamy w NiksMany!</b></blockquote>\n<i>Wybierz akcję poniżej 👇</i>", 'sub_task': "<blockquote>🚨 <b>Dostęp ograniczony!</b></blockquote>\n<i>Zasubskrybuj nasz kanał.</i>\n\n🎁 Bonus: <code>0.01 USDT</code>.", 'check_sub': "✅ Sprawdź", 'sub_err': "❌ Nie zasubskrybowano!", 'sub_ok': "🎉 Bonus przyznany.", 'unsub_pen': "<blockquote>⚠️ <b>Kara!</b></blockquote>\n<i>Pobrano 0.01 USDT.</i>",
+        'profile': "<blockquote>🪪 <b>PROFIL UŻYTKOWNIKA</b></blockquote>\n━━━━━━━━━━━━━━━━━━\n👤 <i>Użytkownik:</i> @{username}\n🆔 <i>Twoje ID:</i> <code>{id}</code>\n\n📊 <i>Status:</i> <b>{status}</b>\n🎯 <i>Wykonane zadania:</i> <b>{tasks}</b>\n\n💎 <b>Saldo:</b> <code>{balance} USDT</code>\n━━━━━━━━━━━━━━━━━━",
+        'rules': "<blockquote>📜 <b>ZASADY:</b></blockquote>\n1️⃣ Min. wypłata: 0.33 USDT.\n2️⃣ Kary za odsubskrybowanie!\n3️⃣ Rangi: Brąz, Srebro, Złoto, Platyna.\n4️⃣ Poleceni: 0.03 USDT za aktywnych znajomych.", 'info': "<blockquote>🏢 <b>O NAS:</b></blockquote>\nJesteśmy NM Global Technologies.", 'tech_sup_btn': "👨‍💻 Wsparcie", 'all_tasks': "<blockquote>📋 <b>Dostępne zadania:</b></blockquote>",
+        'withdraw_menu': "<blockquote>💸 <b>WYPŁATA</b></blockquote>\n💎 <i>Dostępne:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Wypłać wszystko (MAX)", 'with_man_btn': "✍️ Wpisz kwotę ręcznie", 'withdraw_req': "<blockquote>💰 <i>Wpisz kwotę (Min. 0.33 USDT):</i></blockquote>", 'with_err_num': "❌ Nieprawidłowa liczba!", 'with_err_min': "❌ Minimum to 0.33 USDT", 'with_err_bal': "❌ Niewystarczające środki!", 'with_ok': "✅ Wniosek utworzony!",
+        'ref_text': "<blockquote>🤝 <b>PROGRAM PARTNERSKI</b></blockquote>\n🔗 <b>Twój link:</b>\n<code>{link}</code>\n\n👥 <i>Zaproszonych:</i> <b>{count}</b>", 'rev_ask': "🎁 Twój paragon: {link}\n<i>Chcesz zostawić opinię?</i>", 'rev_yes': "✅ Tak", 'rev_no': "❌ Nie", 'rev_write': "✍️ Napisz swoją opinię:", 'rev_thanks': "✅ Dziękujemy! Wysłano."
+    },
+    'uk': {
+        'btn_profile': "👤 Мій профіль", 'btn_tasks': "🎯 Завдання", 'btn_withdraw': "💸 Виведення коштів", 'btn_ref': "🤝 Партнерам", 'btn_rules': "📜 Правила", 'btn_info': "ℹ️ Про нас", 'btn_lang': "🌍 Мова", 'btn_admin': "⚙️ Адмін-панель", 'btn_details': "📄 Детальніше",
+        'welcome': "<blockquote>🌴 <b>Ласкаво просимо в NiksMany!</b></blockquote>\n<i>Оберіть дію в меню нижче 👇</i>", 'sub_task': "<blockquote>🚨 <b>Доступ обмежено!</b></blockquote>\n<i>Підпишіться на наш офіційний канал.</i>\n\n🎁 За підписку ви отримаєте <code>0.01 USDT</code>.", 'check_sub': "✅ Перевірити", 'sub_err': "❌ Ви не підписалися!", 'sub_ok': "🎉 Бонус нараховано.", 'unsub_pen': "<blockquote>⚠️ <b>Штраф!</b></blockquote>\n<i>З балансу списано 0.01 USDT.</i>",
+        'profile': "<blockquote>🪪 <b>КАБІНЕТ КОРИСТУВАЧА</b></blockquote>\n━━━━━━━━━━━━━━━━━━\n👤 <i>Користувач:</i> @{username}\n🆔 <i>Ваш ID:</i> <code>{id}</code>\n\n📊 <i>Статус:</i> <b>{status}</b>\n🎯 <i>Виконано завдань:</i> <b>{tasks}</b>\n\n💎 <b>Баланс:</b> <code>{balance} USDT</code>\n━━━━━━━━━━━━━━━━━━",
+        'rules': "<blockquote>📜 <b>ПРАВИЛА:</b></blockquote>\n1️⃣ Мін. виведення: 0.33 USDT.\n2️⃣ Штрафи за відписку!\n3️⃣ Ранги: Бронза, Сільвер, Золото, Платина.\n4️⃣ Реферали: 0.03 USDT за активних друзів.", 'info': "<blockquote>🏢 <b>ПРО КОМПАНІЮ:</b></blockquote>\nБот розроблений NM Global Technologies.", 'tech_sup_btn': "👨‍💻 Підтримка", 'all_tasks': "<blockquote>📋 <b>Доступні завдання:</b></blockquote>",
+        'withdraw_menu': "<blockquote>💸 <b>УПРАВЛІННЯ БАЛАНСОМ</b></blockquote>\n💎 <i>Доступно:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Вивести все (MAX)", 'with_man_btn': "✍️ Ввести суму вручну", 'withdraw_req': "<blockquote>💰 <i>Введіть суму (Мін. 0.33 USDT):</i></blockquote>", 'with_err_num': "❌ Некоректне число!", 'with_err_min': "❌ Мінімум 0.33 USDT", 'with_err_bal': "❌ Недостатньо коштів!", 'with_ok': "✅ Заявку створено!",
+        'ref_text': "<blockquote>🤝 <b>ПАРТНЕРСЬКА ПРОГРАМА</b></blockquote>\n🔗 <b>Ваше посилання:</b>\n<code>{link}</code>\n\n👥 <i>Запрошено:</i> <b>{count}</b>", 'rev_ask': "🎁 Ваш чек: {link}\n<i>Бажаєте залишити відгук?</i>", 'rev_yes': "✅ Так", 'rev_no': "❌ Ні", 'rev_write': "✍️ Напишіть ваш відгук:", 'rev_thanks': "✅ Дякуємо! Відправлено."
+    },
+    'uz': {
+        'btn_profile': "👤 Mening profilim", 'btn_tasks': "🎯 Vazifalar", 'btn_withdraw': "💸 Pul yechish", 'btn_ref': "🤝 Hamkorlar", 'btn_rules': "📜 Qoidalar", 'btn_info': "ℹ️ Biz haqimizda", 'btn_lang': "🌍 Til", 'btn_admin': "⚙️ Admin-panel", 'btn_details': "📄 Batafsil",
+        'welcome': "<blockquote>🌴 <b>NiksMany-ga xush kelibsiz!</b></blockquote>\n<i>Quyidagi menyudan harakatni tanlang 👇</i>", 'sub_task': "<blockquote>🚨 <b>Kirish taqqiqlangan!</b></blockquote>\n<i>Kanalimizga obuna bo'ling.</i>\n\n🎁 Bonus: <code>0.01 USDT</code>.", 'check_sub': "✅ Tekshirish", 'sub_err': "❌ Obuna bo'lmadingiz!", 'sub_ok': "🎉 Bonus berildi.", 'unsub_pen': "<blockquote>⚠️ <b>Jarima!</b></blockquote>\n<i>0.01 USDT yechib olindi.</i>",
+        'profile': "<blockquote>🪪 <b>FOYDALANUVCHI PROFILI</b></blockquote>\n━━━━━━━━━━━━━━━━━━\n👤 <i>Foydalanuvchi:</i> @{username}\n🆔 <i>Sizning ID:</i> <code>{id}</code>\n\n📊 <i>Status:</i> <b>{status}</b>\n🎯 <i>Bajarilgan vazifalar:</i> <b>{tasks}</b>\n\n💎 <b>Balans:</b> <code>{balance} USDT</code>\n━━━━━━━━━━━━━━━━━━",
+        'rules': "<blockquote>📜 <b>QOIDALAR:</b></blockquote>\n1️⃣ Min. yechish: 0.33 USDT.\n2️⃣ Obunani bekor qilganlik uchun jarima!\n3️⃣ Darajalar: Bronza, Kumush, Oltin, Platina.\n4️⃣ Referallar: faol do'stlar uchun 0.03 USDT.", 'info': "<blockquote>🏢 <b>BIZ HAQIMIZDA:</b></blockquote>\nBot NM Global Technologies tomonidan ishlab chiqilgan.", 'tech_sup_btn': "👨‍💻 Yordam", 'all_tasks': "<blockquote>📋 <b>Mavjud vazifalar:</b></blockquote>",
+        'withdraw_menu': "<blockquote>💸 <b>PUL YECHISH</b></blockquote>\n💎 <i>Mavjud:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Hammasini yechish (MAX)", 'with_man_btn': "✍️ Miqdorni qo'lda kiritish", 'withdraw_req': "<blockquote>💰 <i>Miqdorni kiriting (Min. 0.33 USDT):</i></blockquote>", 'with_err_num': "❌ Noto'g'ri raqam!", 'with_err_min': "❌ Minimal 0.33 USDT", 'with_err_bal': "❌ Mablag' yetarli emas!", 'with_ok': "✅ So'rov yaratildi!",
+        'ref_text': "<blockquote>🤝 <b>HAMKORLIK DASTURI</b></blockquote>\n🔗 <b>Sizning havolangiz:</b>\n<code>{link}</code>\n\n👥 <i>Taklif qilingan:</i> <b>{count}</b>", 'rev_ask': "🎁 Chekingiz: {link}\n<i>Fikr qoldirishni xohlaysizmi?</i>", 'rev_yes': "✅ Ha", 'rev_no': "❌ Yo'q", 'rev_write': "✍️ Fikringizni yozing:", 'rev_thanks': "✅ Rahmat! Yuborildi."
     }
 }
 
@@ -280,9 +312,16 @@ async def cmd_start(msg: types.Message, state: FSMContext):
         await main_menu(uid, msg)
         return
 
+    # Клавиатура с 6 языками при старте
     welcome = "<blockquote>Hello, you are in the NiksMany bot!</blockquote>\nSelect your language below:"
-    kb = InlineKeyboardMarkup(row_width=2).add(
-        InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"), InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en")
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"),
+        InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en"),
+        InlineKeyboardButton("🇩🇪 DE", callback_data="setlang_de"),
+        InlineKeyboardButton("🇵🇱 PL", callback_data="setlang_pl"),
+        InlineKeyboardButton("🇺🇦 UK", callback_data="setlang_uk"),
+        InlineKeyboardButton("🇺🇿 UZ", callback_data="setlang_uz")
     )
     await send_photo_safe(uid, IMG_LANG, welcome, kb)
 
@@ -343,8 +382,15 @@ async def menu_router(msg: types.Message, state: FSMContext):
         await send_photo_safe(uid, IMG_ADMIN, caption, kb)
             
     elif action == 'btn_lang':
-        kb = InlineKeyboardMarkup(row_width=2).add(
-            InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"), InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en")
+        # Клавиатура с 6 языками в меню настроек
+        kb = InlineKeyboardMarkup(row_width=2)
+        kb.add(
+            InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"),
+            InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en"),
+            InlineKeyboardButton("🇩🇪 DE", callback_data="setlang_de"),
+            InlineKeyboardButton("🇵🇱 PL", callback_data="setlang_pl"),
+            InlineKeyboardButton("🇺🇦 UK", callback_data="setlang_uk"),
+            InlineKeyboardButton("🇺🇿 UZ", callback_data="setlang_uz")
         )
         await send_photo_safe(uid, IMG_LANG, "🌍 Select language:", kb)
         
