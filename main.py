@@ -18,8 +18,7 @@ ADMIN_REVIEWS_CHANNEL = -1004414700976
 STATS_CHANNEL = -1004372612966  # КАНАЛ СТАТИСТИКИ
 
 # ВСТАВЬ СВОЙ ПАРОЛЬ ВМЕСТО ТВОЙ_ПАРОЛЬ НИЖЕ:
-DB_URL = "postgresql://postgres:niksai#CLOUD11@db.nwrdtisxywhsmwuxezid.supabase.co:5432/postgres"
-
+DB_URL = "postgresql://postgres.nwrdtisxywhsmwuxezid:niksai#CLOUD11@aws-1-eu-central-1.pooler.supabase.com:6543/postgres"
 MANDATORY_CHANNEL = "@NiksMany"
 TECH_SUPPORT = "@dskup"
 MIN_WITHDRAW = 0.11
