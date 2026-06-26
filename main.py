@@ -11,7 +11,7 @@ from aiogram.utils import executor
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, BotCommand
 
 # --- НАСТРОЙКИ БОТА ---
-API_TOKEN = '7675571104:AAGPrCg8DcbvtZCwWU8_gjJDkuV-v4clL_8'
+API_TOKEN = '7675571104:AAH3ZJ7x62mCc9AB90Y_Hv_uJmPF-bznW5E'
 MAIN_ADMIN_ID = 6266598653
 ADMIN_PAYOUTS_CHANNEL = -1004391177606
 ADMIN_REVIEWS_CHANNEL = -1004414700976
