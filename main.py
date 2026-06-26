@@ -1,5 +1,6 @@
 import logging
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import asyncio
 import random
 from aiogram import Bot, Dispatcher, types
@@ -14,20 +15,24 @@ API_TOKEN = '7675571104:AAFGqVBRtg8JNuEwXL7Z1tNrpUw9yMEuDk4'
 MAIN_ADMIN_ID = 6266598653
 ADMIN_PAYOUTS_CHANNEL = -1004391177606
 ADMIN_REVIEWS_CHANNEL = -1004414700976
+STATS_CHANNEL = -1004372612966  # КАНАЛ СТАТИСТИКИ
+
+# ВСТАВЬ СВОЙ ПАРОЛЬ ВМЕСТО ТВОЙ_ПАРОЛЬ НИЖЕ:
+DB_URL = "postgresql://postgres:niksai#CLOUD11@db.nwrdtisxywhsmwuxezid.supabase.co:5432/postgres"
+
 MANDATORY_CHANNEL = "@NiksMany"
 TECH_SUPPORT = "@dskup"
-MIN_WITHDRAW = 0.33
+MIN_WITHDRAW = 0.11
 
 # --- ФОТОГРАФИИ (FILE_ID) ---
-# Отправь боту фото со своего админ-аккаунта, скопируй ID, который он выдаст, и вставь сюда:
 IMG_MAIN = 'AgACAgIAAxkBAAIFrGo9dHbmToheF204Rd3GAqnlkES_AAIEF2sbb1PYSYZqYwq5MCvxAQADAgADeQADPAQ'
 IMG_ADMIN = 'AgACAgIAAxkBAAIFqGo9dFZ3O4MzScWJ49gHVRgHam2HAAJ4Gmsbb1PYSdiJjxI6dypyAQADAgADdwADPAQ'
 IMG_LANG = 'AgACAgIAAxkBAAIFomo9c88YKsdeu3g4tfWC5-gVIE7XAAIfHGsb4ETpSV0XFrq0C-mVAQADAgADdwADPAQ'
 IMG_REF = 'AgACAgIAAxkBAAIFoGo9c8j_lJavfabyvf5ktKaMOSeNAAIgHGsb4ETpSXcv0Lrs0NEVAQADAgADdwADPAQ'
 IMG_WITHDRAW = 'AgACAgIAAxkBAAIFnmo9c8A21OtOQ23_foEhFmGHRKyyAAIhHGsb4ETpSavUl5V8cvfdAQADAgADdwADPAQ'
 IMG_TASKS = 'AgACAgIAAxkBAAIFnGo9c7yXgvflzHM77u76vBKrIIARAAIiHGsb4ETpSXcTEqW61q_oAQADAgADdwADPAQ'
-IMG_PROFILE = 'AgACAgIAAxkBAAIFmGo9c6moGDRgBYA1NlK9g4FMz660AAL3Hmsb4ETpSaw6Mg6pa8xrAQADAgADdwADPAQ' # Сюда ID для картинки профиля
-IMG_RULES = 'AgACAgIAAxkBAAIFmmo9c7eUNdHHvTpmqwQiiuY_328iAAL4Hmsb4ETpSabOgpYc2gNbAQADAgADdwADPAQ'   # Сюда ID для картинки правил
+IMG_PROFILE = 'AgACAgIAAxkBAAIFmGo9c6moGDRgBYA1NlK9g4FMz660AAL3Hmsb4ETpSaw6Mg6pa8xrAQADAgADdwADPAQ' 
+IMG_RULES = 'AgACAgIAAxkBAAIFmmo9c7eUNdHHvTpmqwQiiuY_328iAAL4Hmsb4ETpSabOgpYc2gNbAQADAgADdwADPAQ'   
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN, parse_mode='HTML')
@@ -53,17 +58,21 @@ class UserStates(StatesGroup):
     withdraw_amount = State()
     writing_review = State()
 
+def get_db_connection():
+    return psycopg2.connect(DB_URL)
+
 def init_db():
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (user_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'ru', balance REAL DEFAULT 0.0, 
-                  ref_id INTEGER, is_banned INTEGER DEFAULT 0, mandatory_sub INTEGER DEFAULT 0)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS admins (user_id INTEGER PRIMARY KEY)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS tasks (task_id INTEGER PRIMARY KEY AUTOINCREMENT, reward REAL, channels TEXT, label TEXT DEFAULT '')''')
-    c.execute('''CREATE TABLE IF NOT EXISTS user_tasks (user_id INTEGER, task_id INTEGER)''')
-    c.execute("INSERT OR IGNORE INTO admins (user_id) VALUES (?)", (MAIN_ADMIN_ID,))
+                 (user_id BIGINT PRIMARY KEY, lang TEXT DEFAULT 'ru', balance REAL DEFAULT 0.0, 
+                  ref_id BIGINT, is_banned INTEGER DEFAULT 0, mandatory_sub INTEGER DEFAULT 0)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS admins (user_id BIGINT PRIMARY KEY)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS tasks (task_id SERIAL PRIMARY KEY, reward REAL, channels TEXT, label TEXT DEFAULT '')''')
+    c.execute('''CREATE TABLE IF NOT EXISTS user_tasks (user_id BIGINT, task_id INTEGER)''')
+    c.execute("INSERT INTO admins (user_id) VALUES (%s) ON CONFLICT (user_id) DO NOTHING", (MAIN_ADMIN_ID,))
     conn.commit()
+    c.close()
     conn.close()
 
 init_db()
@@ -72,6 +81,12 @@ async def set_default_commands(dp):
     await dp.bot.set_my_commands([
         BotCommand("start", "Перезапустить бота / Главное меню")
     ])
+
+async def log_to_stats(text: str):
+    try:
+        await bot.send_message(STATS_CHANNEL, text)
+    except Exception as e:
+        logging.error(f"Error sending to stats channel: {e}")
 
 LANGS = {
     'ru': {
@@ -94,90 +109,16 @@ LANGS = {
     },
     'en': {
         'btn_profile': "👤 My Profile", 'btn_tasks': "🎯 Tasks", 'btn_withdraw': "💸 Withdraw", 'btn_ref': "🤝 Referrals", 'btn_rules': "📜 Rules", 'btn_info': "ℹ️ About Us", 'btn_lang': "🌍 Language", 'btn_admin': "⚙️ Admin-panel",
-        'btn_details': "📄 Details",
-        'welcome': "<blockquote>🌴 <b>Welcome to NiksMany!</b></blockquote>\n<i>Choose an action in the menu below 👇</i>",
-        'sub_task': "<blockquote>🚨 <b>Access restricted!</b></blockquote>\n<i>Please subscribe to our official channel.</i>\n\n🎁 You get <code>0.01 USDT</code> immediately.",
-        'check_sub': "✅ Verify", 'sub_err': "❌ Not subscribed! Subscribe to earn.", 'sub_ok': "🎉 Reward credited.",
-        'unsub_pen': "<blockquote>⚠️ <b>Penalty!</b></blockquote>\n<i>You unsubscribed.</i>\n0.01 USDT deducted.",
-        'profile': "<blockquote>🪪 <b>USER PROFILE</b></blockquote>\n👤 <i>User:</i> @{username}\n🆔 <i>ID:</i> <code>{id}</code>\n📊 <i>Rank:</i> <b>{status}</b>\n🎯 <i>Tasks completed:</i> <b>{tasks}</b>\n💎 <b>Balance:</b> <code>{balance} USDT</code>",
-        'rules': "<blockquote>📜 <b>RULES:</b></blockquote>\n1️⃣ <b>Min withdraw:</b> 0.33 USDT.\n2️⃣ <b>Penalty:</b> Unsubscribing causes a penalty!\n3️⃣ <b>Ranks:</b>\n  🥉 Bronze: 1 task\n  🥈 Silver: 2-3 tasks\n  🥇 Gold: 4-6 tasks\n  💠 Platinum: 7+ tasks\n4️⃣ <b>Referrals:</b> 0.03 USDT per friend reaching Silver.",
-        'info': "<blockquote>🏢 <b>ABOUT US & OUR TRAFFIC:</b></blockquote>\nDeveloped by NM Global Technologies.\n\n🌐 <b>Traffic Sources:</b>\n• Telegram, Instagram, TikTok, YouTube\n\n🎯 <b>Main Niches:</b>\n🔹 Crypto & NFT\n🔹 Gaming Industry\n🔹 Telegram Stars\n🔹 Sports\n🔹 Gambling & Betting\n🔹 Easy Online Earnings\n🔹 Script & Bot Development\n\n🤝 <b>Cooperation:</b> Contact support to buy traffic!", 'tech_sup_btn': "👨‍💻 Support",
-        'all_tasks': "<blockquote>📋 <b>Available Tasks:</b></blockquote>",
-        'withdraw_menu': "<blockquote>💸 <b>WITHDRAW</b></blockquote>\n💎 <i>Available:</i> <code>{bal} USDT</code>\nSelect method:", 'with_max_btn': "💰 Max Withdraw", 'with_man_btn': "✍️ Manual Amount",
-        'withdraw_req': "<blockquote>💰 <i>Enter amount (Min. 0.33 USDT):</i></blockquote>", 'with_err_num': "❌ Invalid number!", 'with_err_min': "❌ Minimum is 0.33 USDT", 'with_err_bal': "❌ Insufficient funds!", 'with_ok': "✅ Request created!",
-        'ref_text': "<blockquote>🤝 <b>REFERRAL PROGRAM</b></blockquote>\nInvite friends and get <b>0.03 USDT</b>!\n\n🔗 <b>Your link:</b>\n<code>{link}</code>\n👥 <i>Invited:</i> <b>{count} users</b>",
-        'rev_ask': "🎁 Receipt: {link}\n<i>Leave a review?</i>", 'rev_yes': "✅ Yes", 'rev_no': "❌ No", 'rev_write': "✍️ Write review:", 'rev_thanks': "✅ Sent!"
-    },
-    'uk': {
-        'btn_profile': "👤 Мій профіль", 'btn_tasks': "🎯 Завдання", 'btn_withdraw': "💸 Виведення", 'btn_ref': "🤝 Партнерам", 'btn_rules': "📜 Правила", 'btn_info': "ℹ️ Про нас", 'btn_lang': "🌍 Мова", 'btn_admin': "⚙️ Адмін-панель",
-        'btn_details': "📄 Детальніше",
-        'welcome': "<blockquote>🌴 <b>Ласкаво просимо до NiksMany!</b></blockquote>\n<i>Оберіть дію в меню нижче 👇</i>",
-        'sub_task': "<blockquote>🚨 <b>Доступ обмежено!</b></blockquote>\n<i>Підпишіться на наш канал.</i>\n\n🎁 За підписку ви отримаєте <code>0.01 USDT</code>.",
-        'check_sub': "✅ Перевірити", 'sub_err': "❌ Ви не підписалися!", 'sub_ok': "🎉 Чудово! Нагороду зараховано.",
-        'unsub_pen': "<blockquote>⚠️ <b>Штраф!</b></blockquote>\n<i>Ви відписалися.</i>\nСписано 0.01 USDT.",
-        'profile': "<blockquote>🪪 <b>КАБІНЕТ КОРИСТУВАЧА</b></blockquote>\n👤 <i>Користувач:</i> @{username}\n🆔 <i>ID:</i> <code>{id}</code>\n📊 <i>Ранг:</i> <b>{status}</b>\n🎯 <i>Виконано:</i> <b>{tasks}</b>\n💎 <b>Баланс:</b> <code>{balance} USDT</code>",
-        'rules': "<blockquote>📜 <b>ПРАВИЛА:</b></blockquote>\n1️⃣ <b>Мін. вивід:</b> 0.33 USDT.\n2️⃣ <b>Штрафи:</b> За відписку списується баланс!\n3️⃣ <b>Ранг:</b>\n  🥉 Бронза: 1\n  🥈 Сільвер: 2-3\n  🥇 Золото: 4-6\n  💠 Платина: 7+\n4️⃣ <b>Реферали:</b> 0.03 USDT за друга (Сільвер).",
-        'info': "<blockquote>🏢 <b>ПРО КОМПАНІЮ ТА НАШ ТРАФІК:</b></blockquote>\nРозробка NM Global Technologies.\n\n🌐 <b>Джерела трафіку:</b>\n• Telegram, Instagram, TikTok, YouTube\n\n🎯 <b>Основні тематики:</b>\n🔹 Криптовалюта та NFT\n🔹 Ігрова індустрія\n🔹 Telegram Stars\n🔹 Спорт\n🔹 Гемблінг та беттінг\n🔹 Схеми легкого заробітку\n🔹 Розробка скриптів та ботів\n\n🤝 <b>Співпраця:</b> Звертайтесь у підтримку!", 'tech_sup_btn': "👨‍💻 Підтримка",
-        'all_tasks': "<blockquote>📋 <b>Доступні завдання:</b></blockquote>",
-        'withdraw_menu': "<blockquote>💸 <b>ВИВЕДЕННЯ</b></blockquote>\n💎 <i>Доступно:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Вивести все", 'with_man_btn': "✍️ Ввести суму вручну",
-        'withdraw_req': "<blockquote>💰 <i>Сума виводу (Мін 0.33 USDT):</i></blockquote>", 'with_err_num': "❌ Введіть число!", 'with_err_min': "❌ Мін 0.33 USDT", 'with_err_bal': "❌ Недостатньо коштів!", 'with_ok': "✅ Заявка створена!",
-        'ref_text': "<blockquote>🤝 <b>ПАРТНЕРСЬКА ПРОГРАМА</b></blockquote>\nЗапрошуйте друзів!\n🔗 <b>Посилання:</b>\n<code>{link}</code>\n👥 <i>Запрошено:</i> <b>{count} чол.</b>",
-        'rev_ask': "🎁 Ваш чек: {link}\n<i>Відгук?</i>", 'rev_yes': "✅ Так", 'rev_no': "❌ Ні", 'rev_write': "✍️ Відгук:", 'rev_thanks': "✅ Дякуємо!"
-    },
-    'de': {
-        'btn_profile': "👤 Mein Profil", 'btn_tasks': "🎯 Aufgaben", 'btn_withdraw': "💸 Auszahlung", 'btn_ref': "🤝 Partner", 'btn_rules': "📜 Regeln", 'btn_info': "ℹ️ Über uns", 'btn_lang': "🌍 Sprache", 'btn_admin': "⚙️ Admin-panel",
-        'btn_details': "📄 Details",
-        'welcome': "<blockquote>🌴 <b>Willkommen bei NiksMany!</b></blockquote>\n<i>Aktion wählen 👇</i>",
-        'sub_task': "<blockquote>🚨 <b>Zugang eingeschränkt!</b></blockquote>\n<i>Bitte abonnieren Sie unseren Kanal.</i>\n🎁 <code>0.01 USDT</code> Belohnung.",
-        'check_sub': "✅ Prüfen", 'sub_err': "❌ Nicht abonniert!", 'sub_ok': "🎉 Belohnung erhalten.",
-        'unsub_pen': "<blockquote>⚠️ <b>Strafe!</b></blockquote>\n0.01 USDT abgezogen.",
-        'profile': "<blockquote>🪪 <b>PROFIL</b></blockquote>\n👤 <i>Benutzer:</i> @{username}\n🆔 <i>ID:</i> <code>{id}</code>\n📊 <i>Rang:</i> <b>{status}</b>\n🎯 <i>Aufgaben:</i> <b>{tasks}</b>\n💎 <b>Guthaben:</b> <code>{balance} USDT</code>",
-        'rules': "<blockquote>📜 <b>REGELN:</b></blockquote>\n1️⃣ <b>Min Auszahlung:</b> 0.33 USDT.\n4️⃣ <b>Partner:</b> 0.03 USDT pro Freund (Silber).",
-        'info': "<blockquote>🏢 <b>ÜBER UNS:</b></blockquote>\nNM Global Technologies. Traffic: Telegram, Instagram, TikTok. Nischen: Crypto, Gaming, Betting, NFT.", 'tech_sup_btn': "👨‍💻 Support",
-        'all_tasks': "<blockquote>📋 <b>Aufgaben:</b></blockquote>",
-        'withdraw_menu': "<blockquote>💸 <b>AUSZAHLUNG</b></blockquote>\n💎 <i>Verfügbar:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Max Auszahlung", 'with_man_btn': "✍️ Manuell",
-        'withdraw_req': "<blockquote>💰 <i>Betrag (Min 0.33):</i></blockquote>", 'with_err_num': "❌ Ungültig!", 'with_err_min': "❌ Min 0.33", 'with_err_bal': "❌ Zu wenig Geld!", 'with_ok': "✅ Gesendet!",
-        'ref_text': "<blockquote>🤝 <b>PARTNER</b></blockquote>\n🔗 <b>Link:</b>\n<code>{link}</code>\n👥 <i>Eingeladen:</i> <b>{count}</b>",
-        'rev_ask': "🎁 Beleg: {link}\n<i>Bewertung?</i>", 'rev_yes': "✅ Ja", 'rev_no': "❌ Nein", 'rev_write': "✍️ Text:", 'rev_thanks': "✅ Danke!"
-    },
-    'pl': {
-        'btn_profile': "👤 Mój profil", 'btn_tasks': "🎯 Zadania", 'btn_withdraw': "💸 Wypłata", 'btn_ref': "🤝 Partnerzy", 'btn_rules': "📜 Zasady", 'btn_info': "ℹ️ O nas", 'btn_lang': "🌍 Język", 'btn_admin': "⚙️ Panel Admina",
-        'btn_details': "📄 Szczegóły",
-        'welcome': "<blockquote>🌴 <b>Witamy w NiksMany!</b></blockquote>\n<i>Wybierz akcję 👇</i>",
-        'sub_task': "<blockquote>🚨 <b>Brak dostępu!</b></blockquote>\n<i>Zasubskrybuj kanał.</i>\n🎁 <code>0.01 USDT</code>.",
-        'check_sub': "✅ Sprawdź", 'sub_err': "❌ Brak subskrypcji!", 'sub_ok': "🎉 Nagroda!",
-        'unsub_pen': "<blockquote>⚠️ <b>Kara!</b></blockquote>\nOdjęto 0.01 USDT.",
-        'profile': "<blockquote>🪪 <b>PROFIL</b></blockquote>\n👤 <i>User:</i> @{username}\n🆔 <i>ID:</i> <code>{id}</code>\n📊 <i>Ranga:</i> <b>{status}</b>\n🎯 <i>Zadania:</i> <b>{tasks}</b>\n💎 <b>Saldo:</b> <code>{balance} USDT</code>",
-        'rules': "<blockquote>📜 <b>ZASADY:</b></blockquote>\n1️⃣ <b>Min wypłata:</b> 0.33 USDT.\n4️⃣ <b>Poleceni:</b> 0.03 USDT (Srebro).",
-        'info': "<blockquote>🏢 <b>O NAS:</b></blockquote>\nNM Global Technologies. Ruch z Telegram, TikTok. Nisze: Crypto, NFT, Gaming.", 'tech_sup_btn': "👨‍💻 Wsparcie",
-        'all_tasks': "<blockquote>📋 <b>Zadania:</b></blockquote>",
-        'withdraw_menu': "<blockquote>💸 <b>WYPŁATA</b></blockquote>\n💎 <i>Dostępne:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Max", 'with_man_btn': "✍️ Ręcznie",
-        'withdraw_req': "<blockquote>💰 <i>Kwota (Min 0.33):</i></blockquote>", 'with_err_num': "❌ Błąd!", 'with_err_min': "❌ Min 0.33", 'with_err_bal': "❌ Brak środków!", 'with_ok': "✅ Wysłano!",
-        'ref_text': "<blockquote>🤝 <b>PARTNERZY</b></blockquote>\n🔗 <b>Link:</b>\n<code>{link}</code>\n👥 <i>Poleceni:</i> <b>{count}</b>",
-        'rev_ask': "🎁 Paragon: {link}\n<i>Opinia?</i>", 'rev_yes': "✅ Tak", 'rev_no': "❌ Nie", 'rev_write': "✍️ Napisz:", 'rev_thanks': "✅ Dzięki!"
-    },
-    'uz': {
-        'btn_profile': "👤 Profilim", 'btn_tasks': "🎯 Vazifalar", 'btn_withdraw': "💸 Yechib olish", 'btn_ref': "🤝 Hamkorlar", 'btn_rules': "📜 Qoidalar", 'btn_info': "ℹ️ Biz haqimizda", 'btn_lang': "🌍 Til", 'btn_admin': "⚙️ Admin-panel",
-        'btn_details': "📄 Batafsil",
-        'welcome': "<blockquote>🌴 <b>NiksMany-ga xush kelibsiz!</b></blockquote>\n<i>Harakatni tanlang 👇</i>",
-        'sub_task': "<blockquote>🚨 <b>Kirish cheklangan!</b></blockquote>\n<i>Kanalimizga obuna bo'ling.</i>\n🎁 <code>0.01 USDT</code> olasiz.",
-        'check_sub': "✅ Tekshirish", 'sub_err': "❌ Obuna bo'lmadingiz!", 'sub_ok': "🎉 Mukofot!",
-        'unsub_pen': "<blockquote>⚠️ <b>Jarima!</b></blockquote>\n0.01 USDT yechildi.",
-        'profile': "<blockquote>🪪 <b>PROFIL</b></blockquote>\n👤 <i>Foydalanuvchi:</i> @{username}\n🆔 <i>ID:</i> <code>{id}</code>\n📊 <i>Daraja:</i> <b>{status}</b>\n🎯 <i>Vazifalar:</i> <b>{tasks}</b>\n💎 <b>Balans:</b> <code>{balance} USDT</code>",
-        'rules': "<blockquote>📜 <b>QOIDALAR:</b></blockquote>\n1️⃣ <b>Min yechish:</b> 0.33 USDT.\n4️⃣ <b>Hamkorlar:</b> 0.03 USDT.",
-        'info': "<blockquote>🏢 <b>BIZ HAQIMIZDA:</b></blockquote>\nNM Global Technologies. Trafik: Telegram, TikTok. Crypto, NFT.", 'tech_sup_btn': "👨‍💻 Yordam",
-        'all_tasks': "<blockquote>📋 <b>Vazifalar:</b></blockquote>",
-        'withdraw_menu': "<blockquote>💸 <b>YECHISH</b></blockquote>\n💎 <i>Mavjud:</i> <code>{bal} USDT</code>", 'with_max_btn': "💰 Hammasi", 'with_man_btn': "✍️ Qo'lda",
-        'withdraw_req': "<blockquote>💰 <i>Summa (Min 0.33):</i></blockquote>", 'with_err_num': "❌ Xato!", 'with_err_min': "❌ Min 0.33", 'with_err_bal': "❌ Mablag' yetarli emas!", 'with_ok': "✅ Yuborildi!",
-        'ref_text': "<blockquote>🤝 <b>HAMKORLAR</b></blockquote>\n🔗 <b>Havola:</b>\n<code>{link}</code>\n👥 <i>Taklif qilingan:</i> <b>{count}</b>",
-        'rev_ask': "🎁 Chek: {link}\n<i>Fikr?</i>", 'rev_yes': "✅ Ha", 'rev_no': "❌ Yo'q", 'rev_write': "✍️ Yozing:", 'rev_thanks': "✅ Rahmat!"
+        'btn_details': "📄 Details", 'welcome': "<blockquote>🌴 <b>Welcome to NiksMany!</b></blockquote>", 'sub_task': "<blockquote>🚨 <b>Access restricted!</b></blockquote>", 'check_sub': "✅ Verify", 'sub_err': "❌ Not subscribed!", 'sub_ok': "🎉 Reward credited.", 'unsub_pen': "<blockquote>⚠️ <b>Penalty!</b></blockquote>",
+        'profile': "<blockquote>🪪 <b>USER PROFILE</b></blockquote>", 'rules': "<blockquote>📜 <b>RULES:</b></blockquote>", 'info': "<blockquote>🏢 <b>ABOUT US</b></blockquote>", 'tech_sup_btn': "👨‍💻 Support", 'all_tasks': "<blockquote>📋 <b>Available Tasks:</b></blockquote>", 'withdraw_menu': "<blockquote>💸 <b>WITHDRAW</b></blockquote>", 'with_max_btn': "💰 Max Withdraw", 'with_man_btn': "✍️ Manual Amount",
+        'withdraw_req': "<blockquote>💰 <i>Enter amount:</i></blockquote>", 'with_err_num': "❌ Invalid number!", 'with_err_min': "❌ Minimum is 0.33 USDT", 'with_err_bal': "❌ Insufficient funds!", 'with_ok': "✅ Request created!", 'ref_text': "<blockquote>🤝 <b>REFERRAL PROGRAM</b></blockquote>", 'rev_ask': "🎁 Receipt: {link}", 'rev_yes': "✅ Yes", 'rev_no': "❌ No", 'rev_write': "✍️ Write review:", 'rev_thanks': "✅ Sent!"
     }
 }
 
 def get_txt(uid, key, **kwargs):
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT lang FROM users WHERE user_id = ?", (uid,))
+    c.execute("SELECT lang FROM users WHERE user_id = %s", (uid,))
     res = c.fetchone()
     conn.close()
     lang = res[0] if res and res[0] in LANGS else 'ru'
@@ -207,17 +148,17 @@ def parse_channels(channels_str):
     return result
 
 async def is_admin(uid):
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT user_id FROM admins WHERE user_id = ?", (uid,))
+    c.execute("SELECT user_id FROM admins WHERE user_id = %s", (uid,))
     res = c.fetchone()
     conn.close()
     return res is not None
 
 async def check_ban(uid):
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT is_banned FROM users WHERE user_id = ?", (uid,))
+    c.execute("SELECT is_banned FROM users WHERE user_id = %s", (uid,))
     res = c.fetchone()
     conn.close()
     return res and res[0] == 1
@@ -226,14 +167,17 @@ async def enforce_mandatory_sub(uid):
     try:
         member = await bot.get_chat_member(MANDATORY_CHANNEL, uid)
         if member.status not in ['member', 'administrator', 'creator']:
-            conn = sqlite3.connect('niksmany.db')
+            conn = get_db_connection()
             c = conn.cursor()
-            c.execute("SELECT mandatory_sub FROM users WHERE user_id = ?", (uid,))
-            msub = c.fetchone()
-            if msub and msub[0] == 1:
-                c.execute("UPDATE users SET mandatory_sub = 0, balance = balance - 0.01 WHERE user_id = ?", (uid,))
+            c.execute("SELECT mandatory_sub, balance FROM users WHERE user_id = %s", (uid,))
+            res = c.fetchone()
+            if res and res[0] == 1:
+                c.execute("UPDATE users SET mandatory_sub = 0, balance = balance - 0.01 WHERE user_id = %s", (uid,))
                 conn.commit()
                 await bot.send_message(uid, get_txt(uid, 'unsub_pen'))
+                
+                user_info = await bot.get_chat(uid)
+                await log_to_stats(f"⚠️ <b>ШТРАФ ЗА ОТПИСКУ ОФ. КАНАЛА</b>\n👤 Пользователь: @{user_info.username or 'Hidden'}\n🆔 ID: <code>{uid}</code>\n📉 Списано: 0.01 USDT\n💎 Текущий баланс: {round(res[1] - 0.01, 4)} USDT")
             conn.close()
             return False
         return True
@@ -241,12 +185,14 @@ async def enforce_mandatory_sub(uid):
         return False
 
 async def verify_task_subscriptions(uid):
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT t.task_id, t.reward, t.channels FROM tasks t JOIN user_tasks ut ON t.task_id = ut.task_id WHERE ut.user_id = ?", (uid,))
+    c.execute("SELECT t.task_id, t.reward, t.channels FROM tasks t JOIN user_tasks ut ON t.task_id = ut.task_id WHERE ut.user_id = %s", (uid,))
     completed_tasks = c.fetchall()
     
     penalties = 0.0
+    user_info = await bot.get_chat(uid)
+    
     for tid, reward, channels_str in completed_tasks:
         all_subbed = True
         for target, _ in parse_channels(channels_str):
@@ -260,35 +206,31 @@ async def verify_task_subscriptions(uid):
                 break
         
         if not all_subbed:
-            c.execute("DELETE FROM user_tasks WHERE user_id = ? AND task_id = ?", (uid, tid))
-            c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (reward, uid))
+            c.execute("DELETE FROM user_tasks WHERE user_id = %s AND task_id = %s", (uid, tid))
+            c.execute("UPDATE users SET balance = balance - %s WHERE user_id = %s", (reward, uid))
             penalties += reward
-    
-    conn.commit()
-    conn.close()
+            await log_to_stats(f"⚠️ <b>ШТРАФ ЗА ОТПИСКУ (ЗАДАНИЕ #{tid})</b>\n👤 Пользователь: @{user_info.username or 'Hidden'}\n🆔 ID: <code>{uid}</code>\n📉 Списано за задание: {reward} USDT")
     
     if penalties > 0:
+        conn.commit()
         try:
             await bot.send_message(uid, f"<blockquote>⚠️ <b>Штраф за отписку!</b></blockquote>\n<i>Бот обнаружил, что вы отписались от каналов в выполненных заданиях.</i>\n\nЗадания сброшены. С баланса списано: <b>{round(penalties, 4)} USDT</b>.")
         except: pass
+    conn.close()
 
 async def send_photo_safe(target_id, photo_id, caption, reply_markup=None):
     try:
-        # Теперь бот отправляет фото по FILE_ID, не загружая файлы с диска!
-        if photo_id:
-            await bot.send_photo(chat_id=target_id, photo=photo_id, caption=caption, reply_markup=reply_markup)
-        else:
-            await bot.send_message(target_id, caption, reply_markup=reply_markup)
+        if photo_id: await bot.send_photo(chat_id=target_id, photo=photo_id, caption=caption, reply_markup=reply_markup)
+        else: await bot.send_message(target_id, caption, reply_markup=reply_markup)
     except Exception as e:
         logging.error(f"Image error: {e}")
         await bot.send_message(target_id, caption, reply_markup=reply_markup)
 
-# ИНСТРУМЕНТ ДЛЯ ПОЛУЧЕНИЯ FILE_ID КАРТИНОК
 @dp.message_handler(content_types=['photo'], state='*')
 async def get_photo_file_id(msg: types.Message):
     uid = msg.from_user.id
     if await is_admin(uid):
-        await msg.answer(f"⚙️ <b>ID этого фото для кода:</b>\n\n<code>{msg.photo[-1].file_id}</code>\n\n<i>Скопируй это и вставь в нужную переменную IMG_ в самом верху кода.</i>")
+        await msg.answer(f"⚙️ <b>ID этого фото для кода:</b>\n\n<code>{msg.photo[-1].file_id}</code>")
 
 async def main_menu(uid, msg=None):
     if not await enforce_mandatory_sub(uid):
@@ -318,18 +260,21 @@ async def cmd_start(msg: types.Message, state: FSMContext):
 
     args = msg.get_args()
     ref_id = int(args) if args.isdigit() and int(args) != uid else None
+    uname = msg.from_user.username or "Hidden"
     
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT lang FROM users WHERE user_id = ?", (uid,))
+    c.execute("SELECT lang, balance FROM users WHERE user_id = %s", (uid,))
     user_data = c.fetchone()
     
     if not user_data:
-        c.execute("INSERT INTO users (user_id, ref_id) VALUES (?, ?)", (uid, ref_id))
+        c.execute("INSERT INTO users (user_id, ref_id) VALUES (%s, %s)", (uid, ref_id))
         conn.commit()
         lang = None
+        await log_to_stats(f"🆕 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ</b>\n👤 Пользователь: @{uname}\n🆔 ID: <code>{uid}</code>\n🤝 Реферал от: <code>{ref_id or 'Нет'}</code>\n📊 Статус: Активен\n💎 Баланс: 0.0 USDT")
     else:
         lang = user_data[0]
+        await log_to_stats(f"🔄 <b>ВХОД В БОТА (/start)</b>\n👤 Пользователь: @{uname}\n🆔 ID: <code>{uid}</code>\n💎 Баланс: {user_data[1]} USDT")
     conn.close()
 
     if lang:
@@ -337,10 +282,8 @@ async def cmd_start(msg: types.Message, state: FSMContext):
         return
 
     welcome = "<blockquote>Hello, you are in the NiksMany bot!</blockquote>\nSelect your language below:"
-    kb = InlineKeyboardMarkup(row_width=3).add(
-        InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"), InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en"),
-        InlineKeyboardButton("🇺🇦 UA", callback_data="setlang_uk"), InlineKeyboardButton("🇩🇪 DE", callback_data="setlang_de"),
-        InlineKeyboardButton("🇵🇱 PL", callback_data="setlang_pl"), InlineKeyboardButton("🇺🇿 UZ", callback_data="setlang_uz")
+    kb = InlineKeyboardMarkup(row_width=2).add(
+        InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"), InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en")
     )
     await send_photo_safe(uid, IMG_LANG, welcome, kb)
 
@@ -349,27 +292,33 @@ async def set_lang(cb: types.CallbackQuery, state: FSMContext):
     await state.finish()
     uid = cb.from_user.id
     lang = cb.data.split('_')[1]
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE users SET lang = ? WHERE user_id = ?", (lang, uid))
+    c.execute("UPDATE users SET lang = %s WHERE user_id = %s", (lang, uid))
     conn.commit(); conn.close()
     await cb.answer()
     await bot.delete_message(uid, cb.message.message_id)
+    
+    uname = cb.from_user.username or "Hidden"
+    await log_to_stats(f"🌍 <b>СМЕНА ЯЗЫКА</b>\n👤 Пользователь: @{uname}\n🆔 ID: <code>{uid}</code>\n🌐 Язык: <code>{lang.upper()}</code>")
     await main_menu(uid)
 
 @dp.callback_query_handler(lambda c: c.data == 'check_m_sub', state='*')
 async def check_m_sub(cb: types.CallbackQuery, state: FSMContext):
     await state.finish()
     uid = cb.from_user.id
+    uname = cb.from_user.username or "Hidden"
     try:
         member = await bot.get_chat_member(MANDATORY_CHANNEL, uid)
         if member.status in ['member', 'administrator', 'creator']:
-            conn = sqlite3.connect('niksmany.db')
+            conn = get_db_connection()
             c = conn.cursor()
-            c.execute("UPDATE users SET mandatory_sub = 1, balance = balance + 0.01 WHERE user_id = ?", (uid,))
+            c.execute("UPDATE users SET mandatory_sub = 1, balance = balance + 0.01 WHERE user_id = %s", (uid,))
             conn.commit(); conn.close()
             await cb.answer(get_txt(uid, 'sub_ok'), show_alert=True)
             await bot.delete_message(uid, cb.message.message_id)
+            
+            await log_to_stats(f"✅ <b>ПОДПИСКА НА ОФ. КАНАЛ</b>\n👤 Пользователь: @{uname}\n🆔 ID: <code>{uid}</code>\n🎁 Награда: +0.01 USDT")
             await main_menu(uid)
         else: await cb.answer(get_txt(uid, 'sub_err'), show_alert=True)
     except: await cb.answer(get_txt(uid, 'sub_err'), show_alert=True)
@@ -382,7 +331,6 @@ async def menu_router(msg: types.Message, state: FSMContext):
     
     current_state = await state.get_state()
     if current_state: await state.finish()
-        
     action = get_action_by_text(msg.text)
 
     if action == 'btn_admin' and await is_admin(uid):
@@ -396,22 +344,20 @@ async def menu_router(msg: types.Message, state: FSMContext):
         await send_photo_safe(uid, IMG_ADMIN, caption, kb)
             
     elif action == 'btn_lang':
-        kb = InlineKeyboardMarkup(row_width=3).add(
-            InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"), InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en"),
-            InlineKeyboardButton("🇺🇦 UA", callback_data="setlang_uk"), InlineKeyboardButton("🇩🇪 DE", callback_data="setlang_de"),
-            InlineKeyboardButton("🇵🇱 PL", callback_data="setlang_pl"), InlineKeyboardButton("🇺🇿 UZ", callback_data="setlang_uz")
+        kb = InlineKeyboardMarkup(row_width=2).add(
+            InlineKeyboardButton("🇷🇺 RU", callback_data="setlang_ru"), InlineKeyboardButton("🇬🇧 EN", callback_data="setlang_en")
         )
         await send_photo_safe(uid, IMG_LANG, "🌍 Select language:", kb)
         
     elif action == 'btn_profile':
         await verify_task_subscriptions(uid)
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT balance, mandatory_sub FROM users WHERE user_id = ?", (uid,))
+        c.execute("SELECT balance, mandatory_sub FROM users WHERE user_id = %s", (uid,))
         res = c.fetchone()
         bal = res[0] if res else 0.0
         m_sub = res[1] if res else 0
-        c.execute("SELECT COUNT(DISTINCT task_id) FROM user_tasks WHERE user_id = ?", (uid,))
+        c.execute("SELECT COUNT(DISTINCT task_id) FROM user_tasks WHERE user_id = %s", (uid,))
         tasks_done = c.fetchone()[0] + m_sub
         conn.close()
         
@@ -421,20 +367,18 @@ async def menu_router(msg: types.Message, state: FSMContext):
         else: user_status = "🥉 Бронза"
 
         uname = msg.from_user.username or "Hidden"
-        # ДОБАВЛЕНО ФОТО ПРОФИЛЯ
         await send_photo_safe(uid, IMG_PROFILE, get_txt(uid, 'profile', username=uname, id=uid, balance=round(bal, 4), status=user_status, tasks=tasks_done))
         
     elif action == 'btn_ref':
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM users WHERE ref_id = ?", (uid,))
+        c.execute("SELECT COUNT(*) FROM users WHERE ref_id = %s", (uid,))
         count = c.fetchone()[0]
         conn.close()
         link = f"https://t.me/{(await bot.get_me()).username}?start={uid}"
         await send_photo_safe(uid, IMG_REF, get_txt(uid, 'ref_text', link=link, count=count))
         
     elif action == 'btn_rules':
-        # КНОПКА ПОДРОБНЕЙ ТЕПЕРЬ ПЕРЕВЕДЕНА ДЛЯ ВСЕХ ЯЗЫКОВ И ДОБАВЛЕНО ФОТО
         kb = InlineKeyboardMarkup().add(InlineKeyboardButton(get_txt(uid, 'btn_details'), url="https://telegra.ph/Polzovatelskoe-soglashenie-06-25-20"))
         await send_photo_safe(uid, IMG_RULES, get_txt(uid, 'rules'), kb)
         
@@ -444,9 +388,9 @@ async def menu_router(msg: types.Message, state: FSMContext):
         
     elif action == 'btn_withdraw':
         await verify_task_subscriptions(uid)
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (uid,))
+        c.execute("SELECT balance FROM users WHERE user_id = %s", (uid,))
         bal = c.fetchone()[0]
         conn.close()
 
@@ -458,11 +402,11 @@ async def menu_router(msg: types.Message, state: FSMContext):
         
     elif action == 'btn_tasks':
         await verify_task_subscriptions(uid)
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute("SELECT task_id, reward, label FROM tasks")
         all_t = c.fetchall()
-        c.execute("SELECT task_id FROM user_tasks WHERE user_id = ?", (uid,))
+        c.execute("SELECT task_id FROM user_tasks WHERE user_id = %s", (uid,))
         done_t = [row[0] for row in c.fetchall()]
         conn.close()
         
@@ -501,9 +445,9 @@ async def pass_captcha(cb: types.CallbackQuery):
     tid = int(cb.data.split('_')[2])
     await cb.message.delete()
     
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT reward, channels FROM tasks WHERE task_id = ?", (tid,))
+    c.execute("SELECT reward, channels FROM tasks WHERE task_id = %s", (tid,))
     task = c.fetchone()
     conn.close()
     if not task: return
@@ -524,10 +468,11 @@ async def pass_captcha(cb: types.CallbackQuery):
 async def check_task(cb: types.CallbackQuery):
     uid = cb.from_user.id
     tid = int(cb.data.split('_')[1])
+    uname = cb.from_user.username or "Hidden"
     
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT reward, channels FROM tasks WHERE task_id = ?", (tid,))
+    c.execute("SELECT reward, channels FROM tasks WHERE task_id = %s", (tid,))
     task = c.fetchone()
     if not task: conn.close(); return
     
@@ -539,13 +484,15 @@ async def check_task(cb: types.CallbackQuery):
         except: needed_now.append(target)
             
     if len(needed_now) == 0:
-        c.execute("SELECT 1 FROM user_tasks WHERE user_id = ? AND task_id = ?", (uid, tid))
+        c.execute("SELECT 1 FROM user_tasks WHERE user_id = %s AND task_id = %s", (uid, tid))
         if not c.fetchone():
-            c.execute("INSERT INTO user_tasks (user_id, task_id) VALUES (?, ?)", (uid, tid))
-            c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (task[0], uid))
+            c.execute("INSERT INTO user_tasks (user_id, task_id) VALUES (%s, %s)", (uid, tid))
+            c.execute("UPDATE users SET balance = balance + %s WHERE user_id = %s", (task[0], uid))
             conn.commit()
             await cb.answer("🎉 Награда начислена!", show_alert=True)
             await bot.delete_message(uid, cb.message.message_id)
+            
+            await log_to_stats(f"🎯 <b>ВЫПОЛНЕНИЕ ЗАДАНИЯ</b>\n👤 Пользователь: @{uname}\n🆔 ID: <code>{uid}</code>\n✅ Выполнил задание: #{tid}\n💰 Начислено: +{task[0]} USDT")
         else: await cb.answer("❌ Вы уже выполнили это задание!", show_alert=True)
     else: await cb.answer("❌ Вы не подписались на все каналы!", show_alert=True)
     conn.close()
@@ -553,6 +500,7 @@ async def check_task(cb: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data in ['with_max', 'with_manual'], state='*')
 async def withdraw_choice(cb: types.CallbackQuery, state: FSMContext):
     uid = cb.from_user.id
+    uname = cb.from_user.username or "Hidden"
     await state.finish()
     await cb.answer()
     if cb.data == 'with_manual':
@@ -560,21 +508,24 @@ async def withdraw_choice(cb: types.CallbackQuery, state: FSMContext):
         await bot.send_message(uid, get_txt(uid, 'withdraw_req'))
     elif cb.data == 'with_max':
         await verify_task_subscriptions(uid)
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT balance FROM users WHERE user_id = ?", (uid,))
+        c.execute("SELECT balance FROM users WHERE user_id = %s", (uid,))
         bal = c.fetchone()[0]
         if bal < MIN_WITHDRAW:
             await bot.send_message(uid, get_txt(uid, 'with_err_min'))
             conn.close(); return
-        c.execute("UPDATE users SET balance = 0 WHERE user_id = ?", (uid,))
+        c.execute("UPDATE users SET balance = 0 WHERE user_id = %s", (uid,))
         conn.commit(); conn.close()
         await bot.send_message(uid, get_txt(uid, 'with_ok'))
         await bot.send_message(ADMIN_PAYOUTS_CHANNEL, f"💰 <b>НОВАЯ ЗАЯВКА (MAX)!</b>\nID: <code>{uid}</code>\nСумма: <b>{bal} USDT</b>\nВыдать чек: <code>/pay {uid} ССЫЛКА</code>")
+        
+        await log_to_stats(f"💸 <b>ЗАЯВКА НА ВЫВОД (МАКС)</b>\n👤 Пользователь: @{uname}\n🆔 ID: <code>{uid}</code>\n📉 Списано: {bal} USDT\n📊 Статус: Ожидает обработки")
 
 @dp.message_handler(state=UserStates.withdraw_amount)
 async def withdraw_process(msg: types.Message, state: FSMContext):
     uid = msg.from_user.id
+    uname = msg.from_user.username or "Hidden"
     try: amt = float(msg.text.replace(',', '.'))
     except ValueError: 
         await msg.answer(get_txt(uid, 'with_err_num')); await state.finish(); return
@@ -583,18 +534,20 @@ async def withdraw_process(msg: types.Message, state: FSMContext):
         await msg.answer(get_txt(uid, 'with_err_min')); await state.finish(); return
     
     await verify_task_subscriptions(uid)
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT balance FROM users WHERE user_id = ?", (uid,))
+    c.execute("SELECT balance FROM users WHERE user_id = %s", (uid,))
     bal = c.fetchone()[0]
     
     if bal < amt:
         await msg.answer(get_txt(uid, 'with_err_bal')); conn.close(); await state.finish(); return
         
-    c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amt, uid))
+    c.execute("UPDATE users SET balance = balance - %s WHERE user_id = %s", (amt, uid))
     conn.commit(); conn.close()
     await msg.answer(get_txt(uid, 'with_ok'))
     await bot.send_message(ADMIN_PAYOUTS_CHANNEL, f"💰 <b>НОВАЯ ЗАЯВКА НА ВЫВОД!</b>\nID: <code>{uid}</code>\nСумма: <b>{amt} USDT</b>\nВыдать чек: <code>/pay {uid} ССЫЛКА</code>")
+    
+    await log_to_stats(f"💸 <b>ЗАЯВКА НА ВЫВОД</b>\n👤 Пользователь: @{uname}\n🆔 ID: <code>{uid}</code>\n📉 Списано: {amt} USDT\n📊 Статус: Ожидает обработки")
     await state.finish()
 
 @dp.message_handler(commands=['pay'], state='*')
@@ -609,6 +562,8 @@ async def admin_pay(msg: types.Message, state: FSMContext):
     kb = InlineKeyboardMarkup(row_width=2).add(InlineKeyboardButton(get_txt(t_id, 'rev_yes'), callback_data="write_rev"), InlineKeyboardButton(get_txt(t_id, 'rev_no'), callback_data="no_rev"))
     await bot.send_message(t_id, get_txt(t_id, 'rev_ask', link=link), reply_markup=kb)
     await msg.answer("✅ Чек отправлен!")
+    
+    await log_to_stats(f"💳 <b>ВЫПЛАТА ПРОИЗВЕДЕНА</b>\n🆔 Кому ID: <code>{t_id}</code>\n🔗 Ссылка на чек: {link}")
 
 @dp.callback_query_handler(lambda c: c.data in ['write_rev', 'no_rev'], state='*')
 async def ask_rev(cb: types.CallbackQuery, state: FSMContext):
@@ -640,7 +595,7 @@ async def adm_clicks(cb: types.CallbackQuery, state: FSMContext):
         await AdminStates.task_reward.set()
         await bot.send_message(uid, "Введите сумму награды (например, 0.05):")
     elif act == "a_rem_t":
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute("SELECT task_id, reward, label FROM tasks")
         tasks = c.fetchall()
@@ -674,12 +629,13 @@ async def adm_clicks(cb: types.CallbackQuery, state: FSMContext):
 async def process_rem_task(msg: types.Message, state: FSMContext):
     try:
         tid = int(msg.text)
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("DELETE FROM tasks WHERE task_id = ?", (tid,))
-        c.execute("DELETE FROM user_tasks WHERE task_id = ?", (tid,))
+        c.execute("DELETE FROM tasks WHERE task_id = %s", (tid,))
+        c.execute("DELETE FROM user_tasks WHERE task_id = %s", (tid,))
         conn.commit(); conn.close()
         await msg.answer("✅ Задание успешно удалено.")
+        await log_to_stats(f"⚙️ <b>АДМИН-ДЕЙСТВИЕ</b>\nУдалено задание #{tid}")
     except ValueError: await msg.answer("❌ Ошибка ввода (ID).")
     await state.finish()
 
@@ -687,11 +643,12 @@ async def process_rem_task(msg: types.Message, state: FSMContext):
 async def a_add_adm(msg: types.Message, state: FSMContext):
     try:
         new_id = int(msg.text.strip())
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("INSERT OR IGNORE INTO admins (user_id) VALUES (?)", (new_id,))
+        c.execute("INSERT INTO admins (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (new_id,))
         conn.commit(); conn.close()
         await msg.answer(f"✅ Админ {new_id} добавлен.")
+        await log_to_stats(f"⚙️ <b>АДМИН-ДЕЙСТВИЕ</b>\nДобавлен новый администратор ID: <code>{new_id}</code>")
         try: await bot.send_message(new_id, "⭐️ Вам выданы права администратора бота.")
         except: pass
     except ValueError: await msg.answer("❌ Ошибка ввода. Нужно число.")
@@ -704,11 +661,12 @@ async def a_rem_adm(msg: types.Message, state: FSMContext):
         if rem_id == MAIN_ADMIN_ID:
             await msg.answer("❌ Нельзя удалить главного админа!")
             await state.finish(); return
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("DELETE FROM admins WHERE user_id = ?", (rem_id,))
+        c.execute("DELETE FROM admins WHERE user_id = %s", (rem_id,))
         conn.commit(); conn.close()
         await msg.answer(f"✅ Админ {rem_id} удален.")
+        await log_to_stats(f"⚙️ <b>АДМИН-ДЕЙСТВИЕ</b>\nУдален администратор ID: <code>{rem_id}</code>")
         try: await bot.send_message(rem_id, "⚠️ Вы были лишены прав администратора.")
         except: pass
     except ValueError: await msg.answer("❌ Ошибка ввода.")
@@ -721,11 +679,14 @@ async def a_ban(msg: types.Message, state: FSMContext):
         if uid == MAIN_ADMIN_ID:
             await msg.answer("❌ Нельзя забанить главного админа!")
             await state.finish(); return
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (uid,))
+        c.execute("UPDATE users SET is_banned = 1 WHERE user_id = %s", (uid,))
         conn.commit(); conn.close()
         await msg.answer(f"🔨 Пользователь {uid} забанен.")
+        
+        user_info = await bot.get_chat(uid)
+        await log_to_stats(f"🔨 <b>БАН ПОЛЬЗОВАТЕЛЯ</b>\n👤 Пользователь: @{user_info.username or 'Hidden'}\n🆔 ID: <code>{uid}</code>\n📊 Статус: Забанен ❌")
         try: await bot.send_message(uid, "🚫 Вы были заблокированы администратором бота.")
         except: pass
     except ValueError: await msg.answer("❌ Ошибка ввода.")
@@ -735,11 +696,14 @@ async def a_ban(msg: types.Message, state: FSMContext):
 async def a_unban(msg: types.Message, state: FSMContext):
     try:
         uid = int(msg.text)
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (uid,))
+        c.execute("UPDATE users SET is_banned = 0 WHERE user_id = %s", (uid,))
         conn.commit(); conn.close()
         await msg.answer(f"🕊 Пользователь {uid} разбанен.")
+        
+        user_info = await bot.get_chat(uid)
+        await log_to_stats(f"🕊 <b>РАЗБАН ПОЛЬЗОВАТЕЛЯ</b>\n👤 Пользователь: @{user_info.username or 'Hidden'}\n🆔 ID: <code>{uid}</code>\n📊 Статус: Разбанен ✅")
         try: await bot.send_message(uid, "✅ Ваш аккаунт был разблокирован.")
         except: pass
     except ValueError: await msg.answer("❌ Ошибка ввода.")
@@ -761,11 +725,14 @@ async def process_add_bal_amt(msg: types.Message, state: FSMContext):
     try:
         amt = float(msg.text.replace(',', '.'))
         data = await state.get_data()
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amt, data['t_id']))
+        c.execute("UPDATE users SET balance = balance + %s WHERE user_id = %s", (amt, data['t_id']))
         conn.commit(); conn.close()
         await msg.answer("✅ Баланс пополнен.")
+        
+        user_info = await bot.get_chat(data['t_id'])
+        await log_to_stats(f"💰 <b>НАЧИСЛЕНИЕ USDT (АДМИН)</b>\n👤 Пользователь: @{user_info.username or 'Hidden'}\n🆔 ID: <code>{data['t_id']}</code>\n➕ Начислено: {amt} USDT")
         try: await bot.send_message(data['t_id'], f"💰 <b>Ваш баланс пополнен на {amt} USDT!</b>")
         except: pass
     except ValueError: await msg.answer("❌ Ошибка ввода суммы.")
@@ -787,11 +754,14 @@ async def process_rem_bal_amt(msg: types.Message, state: FSMContext):
     try:
         amt = float(msg.text.replace(',', '.'))
         data = await state.get_data()
-        conn = sqlite3.connect('niksmany.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amt, data['t_id']))
+        c.execute("UPDATE users SET balance = balance - %s WHERE user_id = %s", (amt, data['t_id']))
         conn.commit(); conn.close()
         await msg.answer("✅ Средства сняты.")
+        
+        user_info = await bot.get_chat(data['t_id'])
+        await log_to_stats(f"📉 <b>СПИСАНИЕ USDT (АДМИН)</b>\n👤 Пользователь: @{user_info.username or 'Hidden'}\n🆔 ID: <code>{data['t_id']}</code>\n➖ Списано: {amt} USDT")
         try: await bot.send_message(data['t_id'], f"📉 <b>С вашего баланса списано {amt} USDT администратором.</b>")
         except: pass
     except ValueError: await msg.answer("❌ Ошибка ввода суммы.")
@@ -800,7 +770,7 @@ async def process_rem_bal_amt(msg: types.Message, state: FSMContext):
 @dp.message_handler(state=AdminStates.broadcast, content_types=['text', 'photo'])
 async def process_broadcast(msg: types.Message, state: FSMContext):
     await state.finish()
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT user_id FROM users")
     users = c.fetchall()
@@ -838,11 +808,12 @@ async def a_task_lbl(msg: types.Message, state: FSMContext):
 @dp.message_handler(state=AdminStates.task_links)
 async def a_task_lnks(msg: types.Message, state: FSMContext):
     data = await state.get_data()
-    conn = sqlite3.connect('niksmany.db')
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("INSERT INTO tasks (reward, channels, label) VALUES (?, ?, ?)", (data['reward'], msg.text, data['label']))
+    c.execute("INSERT INTO tasks (reward, channels, label) VALUES (%s, %s, %s)", (data['reward'], msg.text, data['label']))
     conn.commit(); conn.close()
-    await msg.answer("✅ Задание добавлено! Бот будет проверять по ID, а пользователям отдавать твою ссылку.")
+    await msg.answer("✅ Задание добавлено!")
+    await log_to_stats(f"⚙️ <b>АДМИН-ДЕЙСТВИЕ</b>\nДобавлено новое задание: {data['label']} с наградой {data['reward']} USDT")
     await state.finish()
 
 if __name__ == '__main__':
